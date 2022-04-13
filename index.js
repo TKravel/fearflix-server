@@ -2,23 +2,19 @@ require('dotenv').config();
 const express = require('express');
 const fetch = require('node-fetch');
 const cors = require('cors');
-const res = require('express/lib/response');
 const PORT = 3001;
 
 const app = express();
 
 const corsOptions = {
-	origin: 'http://localhost:3000',
+	origin: process.env.ORIGIN,
 };
 
 app.use(cors(corsOptions));
 
 const fetchMovies = async () => {
 	let movies = [];
-	let page = 2;
 	let maxPages = null;
-
-	let url = `https://streaming-availability.p.rapidapi.com/search/pro?country=us&service=netflix&type=movie&order_by=original_title&genre=27&page=${page}&desc=true&language=en&output_language=en`;
 
 	let options = {
 		method: 'GET',
@@ -29,9 +25,12 @@ const fetchMovies = async () => {
 	};
 
 	const fetchRemainingPages = async () => {
-		for (let i = page; i <= maxPages; i++) {
-			console.log(i);
-			await fetch(url, options)
+		let page = 2;
+		for (let i = 2; i <= maxPages; i++) {
+			await fetch(
+				`https://streaming-availability.p.rapidapi.com/search/pro?country=us&service=netflix&type=movie&order_by=original_title&genre=27&page=${page}&desc=true&language=en&output_language=en`,
+				options
+			)
 				.then((res) => res.json())
 				.then((json) => {
 					movies.push(...json.results);
@@ -41,26 +40,29 @@ const fetchMovies = async () => {
 		}
 	};
 
-	await fetch(url, options)
+	// inital fetch, set max pages
+	await fetch(
+		`https://streaming-availability.p.rapidapi.com/search/pro?country=us&service=netflix&type=movie&order_by=original_title&genre=27&page=1&desc=true&language=en&output_language=en`,
+		options
+	)
 		.then((res) => res.json())
 		.then((json) => {
 			movies.push(...json.results);
 			maxPages = json.total_pages;
-			console.log(movies);
-			console.log(maxPages);
 		})
 		.catch((err) => console.error('error:' + err));
 
 	await fetchRemainingPages();
-	console.log(movies.length);
 	return movies;
 };
 
+// test route
 app.get('/', (req, res) => {
 	res.send('Hello World!');
 });
 
-app.get('/test', async (req, res) => {
+// get movies
+app.get('/getmovies', async (req, res) => {
 	const movieData = await fetchMovies();
 	res.json({ data: movieData });
 });
